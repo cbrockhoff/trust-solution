@@ -1,0 +1,53 @@
+{
+    "entries": [
+        {
+            "url": "/tags",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/catalogue/images/{filename}",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/catalogue",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/catalogue/size",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/catalogue/{id}",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/health",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/catalogue/images/other/stuff",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        }
+    ]
+}
