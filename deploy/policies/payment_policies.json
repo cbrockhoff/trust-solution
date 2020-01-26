@@ -1,0 +1,11 @@
+{
+    "entries": [
+        {
+            "url": "/paymentAuth",
+            "method": "POST",
+            "allow": [
+                "orders"
+            ]
+        }
+    ]
+}

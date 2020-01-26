@@ -1,0 +1,25 @@
+{
+    "entries": [
+        {
+            "url": "/shipping",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/shipping/{id}",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/shipping",
+            "method": "POST",
+            "allow": [
+                "orders"
+            ]
+        }
+    ]
+}

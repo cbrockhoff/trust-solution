@@ -1,0 +1,116 @@
+{
+    "entries": [
+        {
+            "url": "/login",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/register",
+            "method": "POST",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/customers",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/customers/{:userId}",
+            "method": "DELETE",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/customers/{:userId}",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/customers/{:userId}/cards",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/customers/{:userId}/addresses",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/cards",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/cards",
+            "method": "POST",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/cards/{id}",
+            "method": "DELETE",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/cards/{id}",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/addresses",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/addresses",
+            "method": "POST",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/addresses/{id}",
+            "method": "DELETE",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/addresses/{id}",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        }
+    ]
+}

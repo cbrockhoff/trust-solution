@@ -1,0 +1,930 @@
+# TOKENS
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tokens
+  labels:
+    name: tokens
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: tokens
+    spec:
+      containers:
+      - name: tokens
+        image: token-service
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tokens
+  labels:
+    name: tokens
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 80
+  selector:
+    name: tokens
+
+# CARTS-DB
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: carts-db
+  labels:
+    name: carts-db
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: carts-db
+    spec:
+      containers:
+      - name: carts-db
+        image: mongo
+        ports:
+        - name: mongo
+          containerPort: 27017
+        securityContext:
+          capabilities:
+            drop:
+              - all
+            add:
+              - CHOWN
+              - SETGID
+              - SETUID
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts-db
+  labels:
+    name: carts-db
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 27017
+    targetPort: 27017
+  selector:
+    name: carts-db
+
+# CARTS
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: carts
+  labels:
+    name: carts
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: carts
+    spec:
+      containers:
+      - name: carts
+        image: weaveworksdemos/carts:0.4.8
+        ports:
+         - containerPort: 80
+        env:
+         - name: ZIPKIN
+           value: zipkin.jaeger.svc.cluster.local
+         - name: JAVA_OPTS
+           value: -Xms64m -Xmx128m -XX:PermSize=32m -XX:MaxPermSize=64m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      - name: carts-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/carts_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/carts/carts.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/carts/carts.key
+            type: File
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  labels:
+    name: carts
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: carts
+
+# CATALOGUE-DB
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: catalogue-db
+  labels:
+    name: catalogue-db
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: catalogue-db
+    spec:
+      containers:
+      - name: catalogue-db
+        image: weaveworksdemos/catalogue-db:0.3.0
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: fake_password
+          - name: MYSQL_DATABASE
+            value: socksdb
+        ports:
+        - name: mysql
+          containerPort: 3306
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue-db
+  labels:
+    name: catalogue-db
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 3306
+    targetPort: 3306
+  selector:
+    name: catalogue-db
+
+# CATALOGUE
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: catalogue
+  labels:
+    name: catalogue
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: catalogue
+    spec:
+      containers:
+      - name: catalogue
+        image: weaveworksdemos/catalogue:0.3.5
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+      - name: catalogue-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/catalogue_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/catalogue/catalogue.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/catalogue/catalogue.key
+            type: File
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue
+  labels:
+    name: catalogue
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: catalogue
+
+# FRONT-END
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: front-end
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: front-end
+    spec:
+      containers:
+      - name: front-end
+        image: front-end_changed
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8079
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+          readOnlyRootFilesystem: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-end
+  labels:
+    name: front-end
+  namespace: sock-shop
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8079
+    nodePort: 30001
+  selector:
+    name: front-end
+
+# ORDERS-DB
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: orders-db
+  labels:
+    name: orders-db
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: orders-db
+    spec:
+      containers:
+      - name: orders-db
+        image: mongo
+        ports:
+        - name: mongo
+          containerPort: 27017
+        securityContext:
+          capabilities:
+            drop:
+              - all
+            add:
+              - CHOWN
+              - SETGID
+              - SETUID
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-db
+  labels:
+    name: orders-db
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 27017
+    targetPort: 27017
+  selector:
+    name: orders-db
+
+# ORDERS
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: orders
+  labels:
+    name: orders
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: orders
+    spec:
+      containers:
+      - name: orders
+        image: orders_changed
+        imagePullPolicy: IfNotPresent
+        env:
+         - name: ZIPKIN
+           value: zipkin.jaeger.svc.cluster.local
+         - name: JAVA_OPTS
+           value: -Xms64m -Xmx128m -XX:PermSize=32m -XX:MaxPermSize=64m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      - name: orders-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/orders_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/orders/orders.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/orders/orders.key
+            type: File
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  labels:
+    name: orders
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: orders
+
+# PAYMENT
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: payment
+  labels:
+    name: payment
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: payment
+    spec:
+      containers:
+      - name: payment
+        image: weaveworksdemos/payment:0.4.3
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+      - name: payment-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/payment_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/payment/payment.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/payment/payment.key
+            type: File
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  labels:
+    name: payment
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: payment
+
+# QUEUE-MASTER
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: queue-master
+  labels:
+    name: queue-master
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: queue-master
+    spec:
+      containers:
+      - name: queue-master
+        image: weaveworksdemos/queue-master:0.3.1
+        ports:
+        - containerPort: 80
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: queue-master
+  labels:
+    name: queue-master
+  annotations:
+    prometheus.io/path: "/prometheus"
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 80
+  selector:
+    name: queue-master
+
+# RABBITMQ
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  labels:
+    name: rabbitmq
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3.6.8
+        ports:
+        - containerPort: 5672
+        securityContext:
+          capabilities:
+            drop:
+              - all
+            add:
+              - CHOWN
+              - SETGID
+              - SETUID
+              - DAC_OVERRIDE
+          readOnlyRootFilesystem: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  labels:
+    name: rabbitmq
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 5672
+    targetPort: 5672
+  selector:
+    name: rabbitmq
+
+# SHIPPING
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: shipping
+  labels:
+    name: shipping
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: shipping
+    spec:
+      containers:
+      - name: shipping
+        image: weaveworksdemos/shipping:0.4.8
+        env:
+         - name: ZIPKIN
+           value: zipkin.jaeger.svc.cluster.local
+         - name: JAVA_OPTS
+           value: -Xms64m -Xmx128m -XX:PermSize=32m -XX:MaxPermSize=64m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      - name: shipping-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/shipping_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/shipping/shipping.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/shipping/shipping.key
+            type: File
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping
+  labels:
+    name: shipping
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: shipping
+
+# USER-DB
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: user-db
+  labels:
+    name: user-db
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: user-db
+    spec:
+      containers:
+      - name: user-db
+        image: weaveworksdemos/user-db:0.4.0
+        ports:
+        - name: mongo
+          containerPort: 27017
+        securityContext:
+          capabilities:
+            drop:
+              - all
+            add:
+              - CHOWN
+              - SETGID
+              - SETUID
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-db
+  labels:
+    name: user-db
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 27017
+    targetPort: 27017
+  selector:
+    name: user-db
+
+# USER
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: user
+  labels:
+    name: user
+  namespace: sock-shop
+spec:
+  revisionHistoryLimit: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: user
+    spec:
+      containers:
+      - name: user
+        image: user_changed
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env:
+        - name: MONGO_HOST
+          value: user-db:27017
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+      - name: user-gw
+        image: policy-gateway
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        env:
+        - name: LISTEN_PORT
+          value: "443"
+        - name: FORWARD_ADDR
+          value: localhost
+        - name: FORWARD_PORT
+          value: "80"
+        - name: POLICY_PATH
+          value: /etc/pgwconf/policy.json
+        volumeMounts:
+          - mountPath: /etc/pgwconf/policy.json
+            name: policy-volume
+          - mountPath: /app/server.crt
+            name: crt-volume
+          - mountPath: /app/server.key
+            name: key-volume
+      volumes:
+        - name: policy-volume
+          hostPath: 
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/policies/user_policies.json
+            type: File
+        - name: crt-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/user/user.crt
+            type: File
+        - name: key-volume
+          hostPath:
+            path: /d/Source/Repositories/sock_shop_repositories/microservices-demo/deploy/certs/user/user.key
+            type: File
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user
+  labels:
+    name: user
+  namespace: sock-shop
+spec:
+  ports:
+    # the port that this service should serve on
+  - port: 443
+    targetPort: 443
+  selector:
+    name: user

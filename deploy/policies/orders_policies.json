@@ -1,0 +1,25 @@
+{
+    "entries": [
+        {
+            "url": "/orders",
+            "method": "POST",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/orders",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/orders/search/customerId",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        }
+    ]
+}

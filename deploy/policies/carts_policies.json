@@ -1,0 +1,47 @@
+{
+    "entries": [
+        {
+            "url": "/carts/{:userId}",
+            "method": "GET",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/carts/{:userId}",
+            "method": "DELETE",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/carts/{:userId}/items",
+            "method": "POST",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/carts/{:userId}/items",
+            "method": "GET",
+            "allow": [
+                "front-end",
+                "orders"
+            ]
+        },
+        {
+            "url": "/carts/{:userId}/items",
+            "method": "PATCH",
+            "allow": [
+                "front-end"
+            ]
+        },
+        {
+            "url": "/carts/{:userId}/items/{itemId}",
+            "method": "DELETE",
+            "allow": [
+                "front-end"
+            ]
+        }
+    ]
+}
